@@ -7,33 +7,33 @@ DIRETORIO = os.path.dirname(os.path.abspath(__file__))
 BANCO = os.path.join(DIRETORIO, "pratos.db")
 
 # -----------------------------
-# ENVIAR PEDIDO (Python)
+# ENVIAR PEDIDO
 # -----------------------------
 def registrar_pedido(descricao_pedido, request: gr.Request):
     query_params = dict(request.query_params)
     id_restaurante = query_params.get('rest', '')
+    numero_mesa = query_params.get('mesa', 'Balcão / Viagem') # Se não tiver mesa no link, assume Balcão
 
-    if not id_restaurante:
-        print("[PYTHON] Erro: Tentativa de pedido sem ID do restaurante na URL.")
-        return ""
-
-    if not descricao_pedido or descricao_pedido.strip() == "":
-        print("[PYTHON] Erro: Pedido vazio ignorado.")
-        return ""
+    if not id_restaurante: return ""
+    if not descricao_pedido or descricao_pedido.strip() == "": return ""
 
     agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     conn = sqlite3.connect(BANCO)
     cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS pedidos (id INTEGER PRIMARY KEY AUTOINCREMENT, descricao TEXT NOT NULL, data_hora TEXT NOT NULL, status TEXT DEFAULT 'Pendente', id_restaurante TEXT)''')
     
-    cursor.execute("INSERT INTO pedidos (descricao, data_hora, status, id_restaurante) VALUES (?, ?, 'Pendente', ?)", (descricao_pedido, agora, id_restaurante))
+    # Atualiza a tabela para suportar o número da mesa
+    cursor.execute('''CREATE TABLE IF NOT EXISTS pedidos (id INTEGER PRIMARY KEY AUTOINCREMENT, descricao TEXT NOT NULL, data_hora TEXT NOT NULL, status TEXT DEFAULT 'Pendente', id_restaurante TEXT, numero_mesa TEXT)''')
+    try: cursor.execute("ALTER TABLE pedidos ADD COLUMN numero_mesa TEXT DEFAULT 'Balcão'")
+    except: pass # Se a coluna já existir, ele ignora o erro
+    
+    # Agora salva o pedido COM a mesa
+    cursor.execute("INSERT INTO pedidos (descricao, data_hora, status, id_restaurante, numero_mesa) VALUES (?, ?, 'Pendente', ?, ?)", 
+                   (descricao_pedido, agora, id_restaurante, numero_mesa))
     conn.commit()
     conn.close()
     
-    print(f"[PYTHON] Sucesso! Pedido gravado para o restaurante ID: {id_restaurante}.")
-    gr.Info("Pedido enviado! A cozinha já está preparando.")
-    
+    gr.Info("✅ Pedido enviado! A cozinha já está preparando.")
     return "" 
 
 # -----------------------------
@@ -42,14 +42,10 @@ def registrar_pedido(descricao_pedido, request: gr.Request):
 def listar_pratos(request: gr.Request):
     query_params = dict(request.query_params)
     id_restaurante = query_params.get('rest', '')
+    numero_mesa = query_params.get('mesa', '')
 
     if not id_restaurante:
-        return """
-        <div class='container' style='justify-content: center; text-align: center; margin-top: 50px;'>
-            <h2>Bem-vindo ao CARD🍔N!</h2>
-            <p>Por favor, acesse o cardápio usando o link ou QR Code fornecido pelo seu restaurante.</p>
-        </div>
-        """
+        return "<div class='container' style='justify-content: center; text-align: center; margin-top: 50px;'><h2>⚠️ Bem-vindo ao CARD🍔N!</h2><p>Por favor, acesse o cardápio usando o link ou QR Code da sua mesa.</p></div>"
 
     conn = sqlite3.connect(BANCO)
     cursor = conn.cursor()
@@ -60,7 +56,10 @@ def listar_pratos(request: gr.Request):
     if not pratos:
         return "<div class='container'><h2>Nenhum prato disponível neste restaurante no momento.</h2></div>"
 
-    html = '<div class="container">'
+    # Aviso bonito no topo mostrando a mesa do cliente
+    aviso_mesa = f"<div class='aviso-mesa'>Você está pedindo na <strong>Mesa {numero_mesa}</strong></div>" if numero_mesa else "<div class='aviso-mesa'>Pedido para <strong>Balcão / Retirada</strong></div>"
+
+    html = aviso_mesa + '<div class="container">'
     for id_prato, nome, preco, foto in pratos:
         imagem = foto if foto else "https://via.placeholder.com/250x180"
         nome_seguro = nome.replace("'", "\\'")
@@ -87,11 +86,12 @@ def listar_pratos(request: gr.Request):
     return html
 
 # -----------------------------
-# CSS E JAVASCRIPT (Atualizado com +/- no carrinho)
+# CSS E JAVASCRIPT
 # -----------------------------
 cabecalho = """
 <style>
     body { background-color: #f5f5f5; }
+    .aviso-mesa { background: #ffcc00; color: #333; padding: 10px; text-align: center; font-size: 18px; font-weight: bold; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
     .container { display:flex; flex-wrap:wrap; gap:20px; padding-bottom:100px; }
     .card { width:250px; background:white; border-radius:12px; overflow:hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition:0.2s; }
     .card:hover { transform:scale(1.02); }
@@ -110,12 +110,10 @@ cabecalho = """
     .btn-add { background-color: #e0e0e0; color: #333; border: none; padding: 10px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; width: 100%; }
     .btn-add:hover { background-color: #4CAF50; color: white; }
     
-    /* Botão flutuante principal */
     .botao-cozinha { position:fixed; bottom:25px; right:25px; background:#ff5722; color:white; border:none; border-radius:50px; padding:18px 28px; font-size:18px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.3); z-index:999; transition: 0.2s; }
     .botao-cozinha:hover { background:#e64a19; transform:scale(1.05); }
     #toast { display: none; position: fixed; bottom: 90px; right: 25px; background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.2); font-weight: bold; }
     
-    /* --- JANELA MODAL DO CARRINHO --- */
     .modal-carrinho { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
     .modal-conteudo { background: white; padding: 25px; border-radius: 16px; width: 90%; max-width: 450px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
     .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
@@ -123,7 +121,6 @@ cabecalho = """
     .btn-fechar-modal { background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
     .carrinho-lista { overflow-y: auto; flex-grow: 1; margin-bottom: 20px; padding-right: 5px; }
     
-    /* --- ESTILOS DOS BOTÕES +/- DENTRO DO CARRINHO --- */
     .carrinho-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
     .carrinho-item-info { font-size: 16px; font-weight: 500; flex-grow: 1; }
     .qtd-wrapper-cart { display: flex; align-items: center; gap: 12px; background: #f9f9f9; padding: 4px 8px; border-radius: 8px; border: 1px solid #eee;}
@@ -144,20 +141,15 @@ cabecalho = """
 <script>
     window.carrinho = [];
 
-    // Atualiza o texto do botão flutuante laranja com o total de itens
     window.atualizarBotaoFlutuante = function() {
         let totalItens = window.carrinho.reduce((acc, item) => acc + item.qtd, 0);
         let btn = document.getElementById('btn-enviar-cozinha');
         if(btn) {
             btn.innerText = totalItens > 0 ? `Ver Carrinho (${totalItens} itens)` : "Carrinho Vazio";
-            // Se o carrinho esvaziar enquanto a modal está aberta, a modal fecha sozinha
-            if(totalItens === 0) {
-                document.getElementById('modal-carrinho-janela').style.display = "none";
-            }
+            if(totalItens === 0) document.getElementById('modal-carrinho-janela').style.display = "none";
         }
     };
 
-    // Renderiza a lista de itens dentro da janela flutuante
     window.renderizarCarrinhoModal = function() {
         let listaDiv = document.getElementById('carrinho-lista-itens');
         if(!listaDiv) return;
@@ -169,7 +161,6 @@ cabecalho = """
         }
 
         window.carrinho.forEach((item, index) => {
-            // Substituímos o botão de Remover pelos botões +/- do carrinho
             let itemHtml = `
                 <div class="carrinho-item">
                     <div class="carrinho-item-info">${item.nome}</div>
@@ -185,8 +176,6 @@ cabecalho = """
     };
 
     document.addEventListener('click', function(e) {
-        
-        // --- 1. Botão MENOS (Cardápio principal) ---
         let btnMinus = e.target.closest('.btn-minus');
         if (btnMinus) {
             let input = document.getElementById(btnMinus.getAttribute('data-target'));
@@ -196,7 +185,6 @@ cabecalho = """
             }
         }
         
-        // --- 2. Botão MAIS (Cardápio principal) ---
         let btnPlus = e.target.closest('.btn-plus');
         if (btnPlus) {
             let input = document.getElementById(btnPlus.getAttribute('data-target'));
@@ -206,7 +194,6 @@ cabecalho = """
             }
         }
 
-        // --- 3. Clicou em ADICIONAR AO CARRINHO (Cardápio principal) ---
         let btnAdd = e.target.closest('.btn-add');
         if (btnAdd) {
             let nomePrato = btnAdd.getAttribute('data-nome');
@@ -216,11 +203,8 @@ cabecalho = """
 
             if (nomePrato) {
                 let itemExistente = window.carrinho.find(item => item.nome === nomePrato);
-                if(itemExistente) {
-                    itemExistente.qtd += qtd;
-                } else {
-                    window.carrinho.push({ nome: nomePrato, qtd: qtd });
-                }
+                if(itemExistente) itemExistente.qtd += qtd;
+                else window.carrinho.push({ nome: nomePrato, qtd: qtd });
                 
                 window.atualizarBotaoFlutuante();
                 
@@ -234,23 +218,15 @@ cabecalho = """
             }
         }
         
-        // --- 4. Clicou no botão de MENOS dentro da Modal do Carrinho ---
         let btnCartMinus = e.target.closest('.btn-cart-minus');
         if (btnCartMinus) {
             let index = parseInt(btnCartMinus.getAttribute('data-index'));
-            
-            // Se a quantidade for maior que 1, apenas subtrai
-            if (window.carrinho[index].qtd > 1) {
-                window.carrinho[index].qtd -= 1;
-            } else {
-                // Se for 1 e apertar menos, remove o item do carrinho
-                window.carrinho.splice(index, 1);
-            }
+            if (window.carrinho[index].qtd > 1) window.carrinho[index].qtd -= 1;
+            else window.carrinho.splice(index, 1);
             window.renderizarCarrinhoModal(); 
             window.atualizarBotaoFlutuante(); 
         }
 
-        // --- 5. Clicou no botão de MAIS dentro da Modal do Carrinho ---
         let btnCartPlus = e.target.closest('.btn-cart-plus');
         if (btnCartPlus) {
             let index = parseInt(btnCartPlus.getAttribute('data-index'));
@@ -259,23 +235,17 @@ cabecalho = """
             window.atualizarBotaoFlutuante(); 
         }
 
-        // --- 6. Clicou no botão Laranja Flutuante (ABRE A MODAL) ---
         let btnVerCarrinho = e.target.closest('#btn-enviar-cozinha');
         if (btnVerCarrinho) {
-            if (window.carrinho.length === 0) {
-                alert("Seu carrinho está vazio! Adicione algum prato primeiro.");
-                return;
-            }
+            if (window.carrinho.length === 0) return;
             window.renderizarCarrinhoModal();
             document.getElementById('modal-carrinho-janela').style.display = "flex";
         }
 
-        // --- 7. Fechar a Modal (Botão X ou clicando no fundo escuro) ---
         if (e.target.closest('#btn-fechar-modal-carrinho') || e.target.id === 'modal-carrinho-janela') {
             document.getElementById('modal-carrinho-janela').style.display = "none";
         }
 
-        // --- 8. Clicou em CONFIRMAR E ENVIAR PEDIDO (Dentro da Modal) ---
         let btnConfirmar = e.target.closest('#btn-confirmar-final');
         if (btnConfirmar) {
             if (window.carrinho.length === 0) return;
@@ -295,9 +265,6 @@ cabecalho = """
 </script>
 """
 
-# -----------------------------
-# ENVIO GRADIO
-# -----------------------------
 codigo_js_oficial_gradio = """
 (texto_antigo) => {
     let pedido_final = localStorage.getItem('ultimo_pedido_cardon') || "";
@@ -307,32 +274,23 @@ codigo_js_oficial_gradio = """
 """
 
 with gr.Blocks(title="Cardápio Digital", head=cabecalho) as demo:
-    gr.Markdown("# CARD🍔N\n### Monte seu carrinho e faça seu pedido")
+    gr.Markdown("# 🍽️ CARD🍔N\n### Monte seu carrinho e faça seu pedido")
 
     caixa_pedido = gr.Textbox(elem_classes="escondido")
     btn_oculto = gr.Button("Oculto", elem_id="btn_enviar_pedido_oculto", elem_classes="escondido")
     
-    btn_oculto.click(
-        fn=registrar_pedido,
-        inputs=[caixa_pedido],
-        outputs=[caixa_pedido],
-        js=codigo_js_oficial_gradio
-    )
+    btn_oculto.click(fn=registrar_pedido, inputs=[caixa_pedido], outputs=[caixa_pedido], js=codigo_js_oficial_gradio)
 
     gr.HTML("""
     <div id="toast">Item adicionado!</div>
-    
     <button id="btn-enviar-cozinha" class="botao-cozinha">Carrinho Vazio</button>
-    
     <div class="modal-carrinho" id="modal-carrinho-janela">
         <div class="modal-conteudo">
             <div class="modal-header">
-                <h3>Seu Carrinho</h3>
+                <h3>🛒 Seu Carrinho</h3>
                 <button class="btn-fechar-modal" id="btn-fechar-modal-carrinho">&times;</button>
             </div>
-            
             <div class="carrinho-lista" id="carrinho-lista-itens"></div>
-            
             <button class="btn-confirmar-pedido" id="btn-confirmar-final">Confirmar e Enviar para Cozinha</button>
         </div>
     </div>
@@ -342,4 +300,4 @@ with gr.Blocks(title="Cardápio Digital", head=cabecalho) as demo:
     demo.load(fn=listar_pratos, outputs=cardapio)
 
 if __name__ == "__main__":
-    demo.launch(server_port=7860)
+    demo.launch(server_port=7860,share=True)

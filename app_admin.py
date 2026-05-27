@@ -4,6 +4,7 @@ import pandas as pd
 import hashlib
 import uuid
 import os
+import qrcode
 
 DIRETORIO = os.path.dirname(os.path.abspath(__file__))
 BANCO = os.path.join(DIRETORIO, "pratos.db")
@@ -15,6 +16,11 @@ def inicializar_banco():
     conn = sqlite3.connect(BANCO)
     cursor = conn.cursor()
     
+    try: 
+        cursor.execute("ALTER TABLE pedidos ADD COLUMN numero_mesa TEXT DEFAULT 'Balcão'")
+    except: 
+        pass
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,7 +116,8 @@ def fazer_logout():
 def listar_pedidos(id_rest):
     if not id_rest: return pd.DataFrame()
     conn = sqlite3.connect(BANCO)
-    df = pd.read_sql_query("SELECT id, descricao, data_hora, status FROM pedidos WHERE id_restaurante = ? ORDER BY id DESC", conn, params=(id_rest,))
+    # Buscando a 'numero_mesa' para mostrar na tabela
+    df = pd.read_sql_query("SELECT id, numero_mesa as 'Mesa', descricao, data_hora, status FROM pedidos WHERE id_restaurante = ? ORDER BY id DESC", conn, params=(id_rest,))
     conn.close()
     return df
 
@@ -261,6 +268,21 @@ def gr_editar(id_busca, nome, preco, foto, id_rest):
 # -----------------------------
 inicializar_banco()
 
+
+def gerar_qr_code(numero_mesa, id_rest):
+        if not id_rest: return None
+        url_base = "http://localhost:7860" # Troque pelo seu IP se for usar no celular
+        
+        if numero_mesa and numero_mesa > 0:
+            url_final = f"{url_base}/?rest={id_rest}&mesa={int(numero_mesa)}"
+        else:
+            url_final = f"{url_base}/?rest={id_rest}"
+            
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(url_final)
+        qr.make(fit=True)
+        return qr.make_image(fill_color="black", back_color="white").get_image()
+
 with gr.Blocks(title="Gestão de Restaurante") as demo:
     sessao_usuario = gr.State(None)
 
@@ -286,6 +308,19 @@ with gr.Blocks(title="Gestão de Restaurante") as demo:
             btn_logout = gr.Button("Sair", size="sm")
 
         with gr.Tabs():
+
+            # --- NOVA ABA: Gerador de QR Code ---
+            with gr.TabItem("Gerar QR Code"):
+                gr.Markdown("### 🖨️ Criar QR Code para as Mesas")
+                with gr.Row():
+                    with gr.Column():
+                        in_mesa = gr.Number(label="Número da Mesa (Deixe 0 para Balcão)", value=1, precision=0)
+                        btn_qr = gr.Button("Criar QR Code", variant="primary")
+                    with gr.Column():
+                        out_qr = gr.Image(label="QR Code", type="pil")
+                
+                btn_qr.click(fn=gerar_qr_code, inputs=[in_mesa, sessao_usuario], outputs=[out_qr])
+
             # --- ABA 1: Cozinha ---
             with gr.TabItem("Fila de Pedidos (Cozinha)"):
                 tabela_pedidos = gr.Dataframe(label="Pedidos Recebidos", interactive=False)
@@ -361,6 +396,9 @@ with gr.Blocks(title="Gestão de Restaurante") as demo:
                 out_msg_del = gr.Textbox(label="Status")
                 btn_del.click(gr_excluir, [in_del_id, sessao_usuario], [out_msg_del, output_table])
 
+
+    
+
     # Chamadas do Painel de Login
     btn_login.click(
         fn=validar_login, inputs=[login_user, login_senha], outputs=[sessao_usuario, tela_login, tela_admin, titulo_admin]
@@ -374,5 +412,8 @@ with gr.Blocks(title="Gestão de Restaurante") as demo:
     
     btn_logout.click(fn=fazer_logout, inputs=[], outputs=[sessao_usuario, tela_login, tela_admin])
 
+
+
+
 if __name__ == "__main__":
-    demo.launch(server_port=7861)
+    demo.launch(server_port=7861,share=True)
