@@ -33,11 +33,11 @@ def registrar_pedido(descricao_pedido, request: gr.Request):
     conn.commit()
     conn.close()
     
-    gr.Info("✅ Pedido enviado! A cozinha já está preparando.")
+    gr.Info("Pedido enviado! A cozinha já está preparando.")
     return "" 
 
 # -----------------------------
-# LISTAR PRATOS
+# LISTAR PRATOS (Com Promoções)
 # -----------------------------
 def listar_pratos(request: gr.Request):
     query_params = dict(request.query_params)
@@ -45,32 +45,53 @@ def listar_pratos(request: gr.Request):
     numero_mesa = query_params.get('mesa', '')
 
     if not id_restaurante:
-        return "<div class='container' style='justify-content: center; text-align: center; margin-top: 50px;'><h2>⚠️ Bem-vindo ao CARD🍔N!</h2><p>Por favor, acesse o cardápio usando o link ou QR Code da sua mesa.</p></div>"
+        return "<div class='container' style='justify-content: center; text-align: center; margin-top: 50px;'><h2>Bem-vindo ao CARD🍔N!</h2><p>Por favor, acesse o cardápio usando o link ou QR Code da sua mesa.</p></div>"
 
     conn = sqlite3.connect(BANCO)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, nome, preco, foto FROM pratos WHERE id_restaurante = ?", (id_restaurante,))
+    
+    # ATUALIZADO: Buscando a coluna preco_promocional
+    query = '''
+        SELECT DISTINCT p.id, p.nome, p.preco, p.preco_promocional, p.foto 
+        FROM pratos p
+        WHERE p.id_restaurante = ?
+        AND p.id NOT IN (
+            SELECT pi.id_prato 
+            FROM prato_ingredientes pi
+            JOIN ingredientes i ON pi.id_ingrediente = i.id
+            WHERE i.status = 'Esgotado'
+        )
+    '''
+    
+    try: cursor.execute(query, (id_restaurante,))
+    except: # Caso o cliente abra antes do admin criar a coluna
+        return "<div class='container'><h2>Aguardando atualização do cardápio pelo restaurante...</h2></div>"
+        
     pratos = cursor.fetchall()
     conn.close()
 
-    if not pratos:
-        return "<div class='container'><h2>Nenhum prato disponível neste restaurante no momento.</h2></div>"
+    if not pratos: return "<div class='container'><h2>Nenhum prato disponível neste restaurante no momento.</h2></div>"
 
-    # Aviso bonito no topo mostrando a mesa do cliente
     aviso_mesa = f"<div class='aviso-mesa'>Você está pedindo na <strong>Mesa {numero_mesa}</strong></div>" if numero_mesa else "<div class='aviso-mesa'>Pedido para <strong>Balcão / Retirada</strong></div>"
 
     html = aviso_mesa + '<div class="container">'
-    for id_prato, nome, preco, foto in pratos:
-        imagem = foto if foto else "https://via.placeholder.com/250x180"
+    for id_prato, nome, preco, preco_promo, foto in pratos:
+        imagem = foto if foto else "https://cdn-icons-png.flaticon.com/512/813/813789.png"
         nome_seguro = nome.replace("'", "\\'")
         id_input = f"qtd-{id_prato}"
+        
+        # Mágica Visual da Promoção
+        if preco_promo and preco_promo > 0:
+            preco_html = f"<div class='preco'><del style='color:#999; font-size:16px; margin-right:8px;'>R$ {preco:.2f}</del><span style='color:#d32f2f;'>R$ {preco_promo:.2f} </span></div>"
+        else:
+            preco_html = f"<div class='preco'>R$ {preco:.2f}</div>"
         
         html += f"""
         <div class="card">
             <img src="{imagem}" class="imagem">
             <div class="conteudo">
                 <div class="titulo">{nome}</div>
-                <div class="preco">R$ {preco:.2f}</div>
+                {preco_html}
                 
                 <div class="qtd-wrapper">
                     <button class="btn-qtd btn-minus" data-target="{id_input}">-</button>
@@ -84,7 +105,6 @@ def listar_pratos(request: gr.Request):
         """
     html += '</div>'
     return html
-
 # -----------------------------
 # CSS E JAVASCRIPT
 # -----------------------------
@@ -274,7 +294,7 @@ codigo_js_oficial_gradio = """
 """
 
 with gr.Blocks(title="Cardápio Digital", head=cabecalho) as demo:
-    gr.Markdown("# 🍽️ CARD🍔N\n### Monte seu carrinho e faça seu pedido")
+    gr.Markdown("# CARD🍔N\n### Monte seu carrinho e faça seu pedido")
 
     caixa_pedido = gr.Textbox(elem_classes="escondido")
     btn_oculto = gr.Button("Oculto", elem_id="btn_enviar_pedido_oculto", elem_classes="escondido")
@@ -287,7 +307,7 @@ with gr.Blocks(title="Cardápio Digital", head=cabecalho) as demo:
     <div class="modal-carrinho" id="modal-carrinho-janela">
         <div class="modal-conteudo">
             <div class="modal-header">
-                <h3>🛒 Seu Carrinho</h3>
+                <h3>Seu Carrinho</h3>
                 <button class="btn-fechar-modal" id="btn-fechar-modal-carrinho">&times;</button>
             </div>
             <div class="carrinho-lista" id="carrinho-lista-itens"></div>
@@ -300,4 +320,4 @@ with gr.Blocks(title="Cardápio Digital", head=cabecalho) as demo:
     demo.load(fn=listar_pratos, outputs=cardapio)
 
 if __name__ == "__main__":
-    demo.launch(server_port=7860,share=True)
+    demo.launch(server_port=7860,share=False)
