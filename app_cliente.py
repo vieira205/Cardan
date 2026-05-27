@@ -32,7 +32,7 @@ def registrar_pedido(descricao_pedido, request: gr.Request):
     conn.close()
     
     print(f"[PYTHON] Sucesso! Pedido gravado para o restaurante ID: {id_restaurante}.")
-    gr.Info("✅ Pedido enviado! A cozinha já está preparando.")
+    gr.Info("Pedido enviado! A cozinha já está preparando.")
     
     return "" 
 
@@ -46,7 +46,7 @@ def listar_pratos(request: gr.Request):
     if not id_restaurante:
         return """
         <div class='container' style='justify-content: center; text-align: center; margin-top: 50px;'>
-            <h2>⚠️ Bem-vindo ao CARD🍔N!</h2>
+            <h2>Bem-vindo ao CARD🍔N!</h2>
             <p>Por favor, acesse o cardápio usando o link ou QR Code fornecido pelo seu restaurante.</p>
         </div>
         """
@@ -307,7 +307,7 @@ codigo_js_oficial_gradio = """
 """
 
 with gr.Blocks(title="Cardápio Digital", head=cabecalho) as demo:
-    gr.Markdown("# 🍽️ CARD🍔N\n### Monte seu carrinho e faça seu pedido")
+    gr.Markdown("# CARD🍔N\n### Monte seu carrinho e faça seu pedido")
 
     caixa_pedido = gr.Textbox(elem_classes="escondido")
     btn_oculto = gr.Button("Oculto", elem_id="btn_enviar_pedido_oculto", elem_classes="escondido")
@@ -327,7 +327,7 @@ with gr.Blocks(title="Cardápio Digital", head=cabecalho) as demo:
     <div class="modal-carrinho" id="modal-carrinho-janela">
         <div class="modal-conteudo">
             <div class="modal-header">
-                <h3>🛒 Seu Carrinho</h3>
+                <h3>Seu Carrinho</h3>
                 <button class="btn-fechar-modal" id="btn-fechar-modal-carrinho">&times;</button>
             </div>
             
