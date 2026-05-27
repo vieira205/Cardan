@@ -320,4 +320,4 @@ with gr.Blocks(title="Cardápio Digital", head=cabecalho) as demo:
     demo.load(fn=listar_pratos, outputs=cardapio)
 
 if __name__ == "__main__":
-    demo.launch(server_port=7860,share=False)
+    demo.launch(server_port=7860,share=True)

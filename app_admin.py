@@ -169,11 +169,53 @@ def calcular_conta_mesa(mesa, id_rest):
     for _, row in df_pratos.iterrows():
         preco_normal = row['preco']
         preco_promo = row['preco_promocional']
-        # Se houver um preço promocional maior que 0, ele passa a ser o preço oficial da conta
         if pd.notna(preco_promo) and preco_promo > 0:
             tabela_precos[row['nome']] = preco_promo
         else:
             tabela_precos[row['nome']] = preco_normal
+            
+    # 2. Pega todos os pedidos ativos dessa mesa
+    df_pedidos = pd.read_sql_query("SELECT id, descricao FROM pedidos WHERE id_restaurante = ? AND numero_mesa = ?", conn, params=(id_rest, str(mesa)))
+    
+    if df_pedidos.empty:
+        conn.close()
+        return f"Nenhum pedido pendente para a Mesa {mesa}.", pd.DataFrame(columns=["Qtd", "Item", "Preço Unit.", "Subtotal"])
+    
+    linhas_conta = []
+    total_geral = 0.0
+    
+    # 3. Lê o texto do pedido e calcula
+    for _, row in df_pedidos.iterrows():
+        descricao = row['descricao']
+        itens = [i.strip() for i in descricao.split("  +  ")]
+        
+        for item in itens:
+            if "x " in item:
+                try:
+                    qtd_str, nome_prato = item.split("x ", 1)
+                    qtd = int(qtd_str)
+                    
+                    preco_unit = tabela_precos.get(nome_prato, 0.0) 
+                    subtotal = qtd * preco_unit
+                    total_geral += subtotal
+                    
+                    linhas_conta.append({
+                        "Qtd": qtd,
+                        "Item": nome_prato,
+                        "Preço Unit.": f"R$ {preco_unit:.2f}",
+                        "Subtotal": f"R$ {subtotal:.2f}"
+                    })
+                except:
+                    pass
+
+    # 4. Muda o status de todos os pedidos da mesa para "Aguardando Pagamento"
+    cursor = conn.cursor()
+    cursor.execute("UPDATE pedidos SET status = 'Aguardando Pagamento' WHERE id_restaurante = ? AND numero_mesa = ?", (id_rest, str(mesa)))
+    conn.commit()
+    conn.close()
+    
+    df_conta = pd.DataFrame(linhas_conta)
+    return f"### Total da Mesa {mesa}: R$ {total_geral:.2f}", df_conta
             
 
 def finalizar_conta_mesa(mesa, id_rest):
@@ -221,9 +263,9 @@ def gr_alterar_status_ingrediente(id_ing, novo_status, id_rest):
     conn.close()
     return f"Status do ingrediente ID {id_ing} modificado para {novo_status}!", gr_listar_ingredientes(id_rest)
 
-def gerar_qr_code(numero_mesa, id_rest):
+def gerar_qr_code(numero_mesa, link_base, id_rest):
     if not id_rest: return None
-    url_base = "http://localhost:7860" # Troque pelo seu IP local se for usar via celular
+    url_base = link_base.strip() if link_base and link_base.strip() != "" else "http://localhost:7860"
     
     if numero_mesa and numero_mesa > 0:
         url_final = f"{url_base}/?rest={id_rest}&mesa={int(numero_mesa)}"
@@ -241,7 +283,6 @@ def gerar_qr_code(numero_mesa, id_rest):
 def gr_listar(id_rest):
     if not id_rest: return pd.DataFrame()
     conn = sqlite3.connect(BANCO)
-    # Adicionado p.preco_promocional na query
     query = '''
         SELECT DISTINCT p.id, p.nome, p.preco, p.preco_promocional as 'Promoção', p.foto 
         FROM pratos p
@@ -299,7 +340,6 @@ def gr_editar(id_busca, nome, preco, preco_promo, foto, id_rest):
     if preco: campos.append("preco = ?"); valores.append(float(preco))
     if foto: campos.append("foto = ?"); valores.append(foto)
     
-    # Preço promocional (aceita 0 para remover a promoção)
     if preco_promo is not None and str(preco_promo).strip() != "":
         campos.append("preco_promocional = ?")
         valores.append(float(preco_promo) if float(preco_promo) > 0 else None)
@@ -455,7 +495,6 @@ with gr.Blocks(title="Gestão de Restaurante") as demo:
                 in_edit_foto = gr.Textbox(label="Nova URL")
                 btn_edit = gr.Button("Atualizar Dados", variant="secondary")
                 out_msg_edit = gr.Textbox(label="Status")
-                # ATUALIZADO:
                 btn_edit.click(gr_editar, [in_edit_id, in_edit_nome, in_edit_preco, in_edit_preco_promo, in_edit_foto, sessao_usuario], [out_msg_edit, output_table_admin])
 
             # ABA 5: Remover Prato
@@ -467,14 +506,16 @@ with gr.Blocks(title="Gestão de Restaurante") as demo:
 
             # ABA 6: Gerar QR Code
             with gr.TabItem("Gerar QR Code"):
-                gr.Markdown("### 🖨️ Criar QR Code para as Mesas")
+                gr.Markdown("### Criar QR Code para as Mesas")
                 with gr.Row():
                     with gr.Column():
+                        in_link_base = gr.Textbox(label="Link Público do Cardápio (Gerado pelo Gradio Share)", placeholder="Ex: https://xxxx.gradio.live", value="http://localhost:7860")
                         in_mesa = gr.Number(label="Número da Mesa (Deixe 0 para Balcão)", value=1, precision=0)
                         btn_qr = gr.Button("Criar QR Code", variant="primary")
                     with gr.Column():
                         out_qr = gr.Image(label="QR Code", type="pil")
-                btn_qr.click(fn=gerar_qr_code, inputs=[in_mesa, sessao_usuario], outputs=[out_qr])
+                
+                btn_qr.click(fn=gerar_qr_code, inputs=[in_mesa, in_link_base, sessao_usuario], outputs=[out_qr])
 
     # ==========================================
     # EVENTOS DE TRANSIÇÃO E LOGOUT
