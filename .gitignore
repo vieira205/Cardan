@@ -1,0 +1,11 @@
+# Ambiente virtual
+venv/
+env/
+
+# Arquivos temporários e de cache do Python
+__pycache__/
+*.pyc
+
+# Banco de dados (Opcional, mas recomendado)
+# Descomente a linha abaixo se não quiser que seus testes locais apaguem o banco de dados do servidor ao atualizar o código
+# pratos.db

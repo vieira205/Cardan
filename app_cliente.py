@@ -12,7 +12,7 @@ BANCO = os.path.join(DIRETORIO, "pratos.db")
 def registrar_pedido(descricao_pedido, request: gr.Request):
     query_params = dict(request.query_params)
     id_restaurante = query_params.get('rest', '')
-    numero_mesa = query_params.get('mesa', 'Balcão / Viagem') # Se não tiver mesa no link, assume Balcão
+    numero_mesa = query_params.get('mesa', 'Balcão / Viagem')
 
     if not id_restaurante: return ""
     if not descricao_pedido or descricao_pedido.strip() == "": return ""
@@ -22,12 +22,10 @@ def registrar_pedido(descricao_pedido, request: gr.Request):
     conn = sqlite3.connect(BANCO)
     cursor = conn.cursor()
     
-    # Atualiza a tabela para suportar o número da mesa
     cursor.execute('''CREATE TABLE IF NOT EXISTS pedidos (id INTEGER PRIMARY KEY AUTOINCREMENT, descricao TEXT NOT NULL, data_hora TEXT NOT NULL, status TEXT DEFAULT 'Pendente', id_restaurante TEXT, numero_mesa TEXT)''')
     try: cursor.execute("ALTER TABLE pedidos ADD COLUMN numero_mesa TEXT DEFAULT 'Balcão'")
-    except: pass # Se a coluna já existir, ele ignora o erro
+    except: pass 
     
-    # Agora salva o pedido COM a mesa
     cursor.execute("INSERT INTO pedidos (descricao, data_hora, status, id_restaurante, numero_mesa) VALUES (?, ?, 'Pendente', ?, ?)", 
                    (descricao_pedido, agora, id_restaurante, numero_mesa))
     conn.commit()
@@ -50,7 +48,6 @@ def listar_pratos(request: gr.Request):
     conn = sqlite3.connect(BANCO)
     cursor = conn.cursor()
     
-    # ATUALIZADO: Buscando a coluna preco_promocional
     query = '''
         SELECT DISTINCT p.id, p.nome, p.preco, p.preco_promocional, p.foto 
         FROM pratos p
@@ -64,7 +61,7 @@ def listar_pratos(request: gr.Request):
     '''
     
     try: cursor.execute(query, (id_restaurante,))
-    except: # Caso o cliente abra antes do admin criar a coluna
+    except: 
         return "<div class='container'><h2>Aguardando atualização do cardápio pelo restaurante...</h2></div>"
         
     pratos = cursor.fetchall()
@@ -80,7 +77,6 @@ def listar_pratos(request: gr.Request):
         nome_seguro = nome.replace("'", "\\'")
         id_input = f"qtd-{id_prato}"
         
-        # Mágica Visual da Promoção
         if preco_promo and preco_promo > 0:
             preco_html = f"<div class='preco'><del style='color:#999; font-size:16px; margin-right:8px;'>R$ {preco:.2f}</del><span style='color:#d32f2f;'>R$ {preco_promo:.2f} </span></div>"
         else:
@@ -105,55 +101,63 @@ def listar_pratos(request: gr.Request):
         """
     html += '</div>'
     return html
+
 # -----------------------------
-# CSS E JAVASCRIPT
+# CSS E JAVASCRIPT (Atualizado com proteção contra Dark Mode)
 # -----------------------------
 cabecalho = """
 <style>
-    body { background-color: #f5f5f5; }
-    .aviso-mesa { background: #ffcc00; color: #333; padding: 10px; text-align: center; font-size: 18px; font-weight: bold; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
-    .container { display:flex; flex-wrap:wrap; gap:20px; padding-bottom:100px; }
-    .card { width:250px; background:white; border-radius:12px; overflow:hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition:0.2s; }
+    /* CORREÇÃO DO DARK MODE: Força o fundo claro e o texto escuro globalmente */
+    body, .gradio-container { background-color: #f5f5f5 !important; }
+    h1, h2, h3, p { color: #222 !important; } 
+
+    .aviso-mesa { background: #ffcc00; color: #333 !important; padding: 10px; text-align: center; font-size: 18px; font-weight: bold; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
+    
+    .container { display:flex; flex-wrap:wrap; gap:20px; padding-bottom:100px; color: #333 !important; }
+    
+    .card { width:250px; background:white !important; color:#333 !important; border-radius:12px; overflow:hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition:0.2s; }
     .card:hover { transform:scale(1.02); }
     .imagem { width:100%; height:180px; object-fit:cover; }
     .conteudo { padding:15px; display: flex; flex-direction: column; gap: 8px; }
-    .titulo { font-size:22px; font-weight:bold; margin:0; line-height: 1.2;}
-    .preco { color:green; font-size:20px; font-weight:bold; margin: 0 0 5px 0;}
+    .titulo { font-size:22px; font-weight:bold; margin:0; line-height: 1.2; color: #111 !important; }
+    .preco { color:green !important; font-size:20px; font-weight:bold; margin: 0 0 5px 0;}
     
-    .qtd-wrapper { display: flex; align-items: center; justify-content: space-between; background: #eee; border-radius: 8px; padding: 5px; margin-bottom: 5px; }
-    .btn-qtd { background: white; border: 1px solid #ccc; border-radius: 5px; width: 32px; height: 32px; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .btn-qtd:hover { background: #ddd; }
-    .input-qtd { width: 50px; text-align: center; border: none; background: transparent; font-size: 16px; font-weight: bold; }
+    .qtd-wrapper { display: flex; align-items: center; justify-content: space-between; background: #eee !important; border-radius: 8px; padding: 5px; margin-bottom: 5px; }
+    .btn-qtd { background: white !important; color: #333 !important; border: 1px solid #ccc; border-radius: 5px; width: 32px; height: 32px; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .btn-qtd:hover { background: #ddd !important; }
+    .input-qtd { width: 50px; text-align: center; border: none; background: transparent !important; font-size: 16px; font-weight: bold; color: #333 !important; }
     .input-qtd::-webkit-inner-spin-button, .input-qtd::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     .input-qtd { -moz-appearance: textfield; }
 
-    .btn-add { background-color: #e0e0e0; color: #333; border: none; padding: 10px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; width: 100%; }
-    .btn-add:hover { background-color: #4CAF50; color: white; }
+    .btn-add { background-color: #e0e0e0 !important; color: #333 !important; border: none; padding: 10px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; width: 100%; }
+    .btn-add:hover { background-color: #4CAF50 !important; color: white !important; }
     
-    .botao-cozinha { position:fixed; bottom:25px; right:25px; background:#ff5722; color:white; border:none; border-radius:50px; padding:18px 28px; font-size:18px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.3); z-index:999; transition: 0.2s; }
-    .botao-cozinha:hover { background:#e64a19; transform:scale(1.05); }
-    #toast { display: none; position: fixed; bottom: 90px; right: 25px; background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.2); font-weight: bold; }
+    .botao-cozinha { position:fixed; bottom:25px; right:25px; background:#ff5722 !important; color:white !important; border:none; border-radius:50px; padding:18px 28px; font-size:18px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.3); z-index:999; transition: 0.2s; }
+    .botao-cozinha:hover { background:#e64a19 !important; transform:scale(1.05); }
     
+    #toast { display: none; position: fixed; bottom: 90px; right: 25px; background: #333 !important; color: #fff !important; padding: 12px 20px; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.2); font-weight: bold; }
+    
+    /* MODAL DO CARRINHO */
     .modal-carrinho { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
-    .modal-conteudo { background: white; padding: 25px; border-radius: 16px; width: 90%; max-width: 450px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+    .modal-conteudo { background: white !important; color: #333 !important; padding: 25px; border-radius: 16px; width: 90%; max-width: 450px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
     .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
-    .modal-header h3 { margin: 0; font-size: 22px; }
-    .btn-fechar-modal { background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
+    .modal-header h3 { margin: 0; font-size: 22px; color: #111 !important; }
+    .btn-fechar-modal { background: none; border: none; font-size: 24px; cursor: pointer; color: #666 !important; }
     .carrinho-lista { overflow-y: auto; flex-grow: 1; margin-bottom: 20px; padding-right: 5px; }
     
-    .carrinho-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
-    .carrinho-item-info { font-size: 16px; font-weight: 500; flex-grow: 1; }
-    .qtd-wrapper-cart { display: flex; align-items: center; gap: 12px; background: #f9f9f9; padding: 4px 8px; border-radius: 8px; border: 1px solid #eee;}
-    .btn-qtd-cart { background: white; border: 1px solid #ccc; border-radius: 6px; width: 30px; height: 30px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; transition: 0.2s;}
-    .btn-cart-minus { color: #d32f2f; }
-    .btn-cart-minus:hover { background: #ffebee; border-color: #ef9a9a; }
-    .btn-cart-plus { color: #388e3c; }
-    .btn-cart-plus:hover { background: #e8f5e9; border-color: #a5d6a7; }
-    .qtd-text-cart { font-weight: bold; font-size: 16px; min-width: 20px; text-align: center;}
+    .carrinho-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; color: #333 !important; }
+    .carrinho-item-info { font-size: 16px; font-weight: 500; flex-grow: 1; color: #333 !important; }
+    .qtd-wrapper-cart { display: flex; align-items: center; gap: 12px; background: #f9f9f9 !important; padding: 4px 8px; border-radius: 8px; border: 1px solid #eee;}
+    .btn-qtd-cart { background: white !important; color: #333 !important; border: 1px solid #ccc; border-radius: 6px; width: 30px; height: 30px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; transition: 0.2s;}
+    .btn-cart-minus { color: #d32f2f !important; }
+    .btn-cart-minus:hover { background: #ffebee !important; border-color: #ef9a9a; }
+    .btn-cart-plus { color: #388e3c !important; }
+    .btn-cart-plus:hover { background: #e8f5e9 !important; border-color: #a5d6a7; }
+    .qtd-text-cart { font-weight: bold; font-size: 16px; min-width: 20px; text-align: center; color: #333 !important; }
     
-    .btn-confirmar-pedido { background: #4CAF50; color: white; border: none; width: 100%; padding: 14px; font-size: 18px; font-weight: bold; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .btn-confirmar-pedido:hover { background: #43a047; }
-    .carrinho-vazio-msg { text-align: center; color: #888; padding: 20px 0; font-style: italic; }
+    .btn-confirmar-pedido { background: #4CAF50 !important; color: white !important; border: none; width: 100%; padding: 14px; font-size: 18px; font-weight: bold; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .btn-confirmar-pedido:hover { background: #43a047 !important; }
+    .carrinho-vazio-msg { text-align: center; color: #888 !important; padding: 20px 0; font-style: italic; }
 
     .escondido { display: none !important; }
 </style>

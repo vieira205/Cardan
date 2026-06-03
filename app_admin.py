@@ -537,9 +537,12 @@ with gr.Blocks(title="Gestão de Restaurante") as demo:
         fn=gr_listar_ingredientes, inputs=[sessao_usuario], outputs=[tabela_ingredientes]
     )
     
-    # Eventos de logout para os dois painéis
-    btn_logout_admin.click(fn=fazer_logout, inputs=[], outputs=[sessao_usuario, sessao_perfil, tela_login, tela_admin, tela_cozinha])
-    btn_logout_coz.click(fn=fazer_logout, inputs=[], outputs=[sessao_usuario, sessao_perfil, tela_login, tela_admin, tela_cozinha])
+    # ---> SUBSTITUA APENAS ESTAS DUAS LINHAS ABAIXO <---
+    btn_logout_admin.click(fn=None, js="() => { window.location.reload(); }")
+    btn_logout_coz.click(fn=None, js="() => { window.location.reload(); }")
+
+if __name__ == "__main__":
+    demo.launch(server_port=7861, share=False)
 
 if __name__ == "__main__":
     demo.launch(server_port=7861, share=False)
