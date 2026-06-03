@@ -210,7 +210,10 @@ cabecalho = """
             let input = document.getElementById(btnPlus.getAttribute('data-target'));
             if (input) {
                 let valor = parseInt(input.value) || 1;
-                input.value = valor + 1;
+                if (valor < 10) 
+                {
+                    input.value = valor + 1;
+                }
             }
         }
 
@@ -223,18 +226,27 @@ cabecalho = """
 
             if (nomePrato) {
                 let itemExistente = window.carrinho.find(item => item.nome === nomePrato);
-                if(itemExistente) itemExistente.qtd += qtd;
-                else window.carrinho.push({ nome: nomePrato, qtd: qtd });
-                
+
+                if (itemExistente) {
+                    let novaQtd = itemExistente.qtd + qtd;
+                    itemExistente.qtd = Math.min(novaQtd, 10);
+                } else {
+                    window.carrinho.push({
+                        nome: nomePrato,
+                        qtd: Math.min(qtd, 10)
+                    });
+                }
+
                 window.atualizarBotaoFlutuante();
-                
+
                 let toast = document.getElementById('toast');
                 if(toast) {
                     toast.innerText = `${qtd}x ${nomePrato} adicionado!`;
                     toast.style.display = "block";
                     setTimeout(() => { toast.style.display = "none"; }, 1800);
                 }
-                if (input) input.value = 1; 
+
+                if (input) input.value = 1;
             }
         }
         
@@ -250,9 +262,13 @@ cabecalho = """
         let btnCartPlus = e.target.closest('.btn-cart-plus');
         if (btnCartPlus) {
             let index = parseInt(btnCartPlus.getAttribute('data-index'));
-            window.carrinho[index].qtd += 1;
-            window.renderizarCarrinhoModal(); 
-            window.atualizarBotaoFlutuante(); 
+
+            if (window.carrinho[index].qtd < 10) {
+                window.carrinho[index].qtd += 1;
+            }
+
+            window.renderizarCarrinhoModal();
+            window.atualizarBotaoFlutuante();
         }
 
         let btnVerCarrinho = e.target.closest('#btn-enviar-cozinha');

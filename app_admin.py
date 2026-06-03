@@ -80,7 +80,6 @@ def registrar_usuario(usuario, senha_admin, senha_cozinha):
     if not usuario or not senha_admin or not senha_cozinha:
         return "Erro: Preencha o usuário e as duas senhas."
     
-    # ---> A TRAVA DE SEGURANÇA AQUI <---
     if senha_admin == senha_cozinha:
         return "Erro: A senha da Cozinha não pode ser igual à do Administrador."
     
@@ -110,18 +109,15 @@ def validar_login(usuario, senha_digitada):
         id_restaurante, pass_admin, pass_cozinha = resultado
         senha_hash = hash_senha(senha_digitada)
         
-        # Checa se a senha bate com a do ADMIN
         if senha_hash == pass_admin:
-            return id_restaurante, "admin", gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), f"👨‍💼 Bem-vindo Admin! (ID: {id_restaurante})"
+            return id_restaurante, "admin", gr.update(visible=False), gr.update(visible=True), gr.update(visible=False), f"Bem-vindo Admin! (ID: {id_restaurante})"
         
-        # Checa se a senha bate com a da COZINHA
         elif senha_hash == pass_cozinha:
-            return id_restaurante, "cozinha", gr.update(visible=False), gr.update(visible=False), gr.update(visible=True), f"👨‍🍳 Bem-vinda Cozinha! (ID: {id_restaurante})"
+            return id_restaurante, "cozinha", gr.update(visible=False), gr.update(visible=False), gr.update(visible=True), f"Bem-vinda Cozinha! (ID: {id_restaurante})"
             
-    return None, None, gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), "❌ Usuário ou senha incorretos."
+    return None, None, gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), "Usuário ou senha incorretos."
 
 def fazer_logout():
-    # Esconde os dois painéis e mostra o login novamente
     return None, None, gr.update(visible=True), gr.update(visible=False), gr.update(visible=False)
 
 # -----------------------------
@@ -364,7 +360,7 @@ inicializar_banco()
 
 with gr.Blocks(title="Gestão de Restaurante") as demo:
     sessao_usuario = gr.State(None)
-    sessao_perfil = gr.State(None) # Guarda se é "admin" ou "cozinha"
+    sessao_perfil = gr.State(None)
 
     # ==========================================
     # TELA DE LOGIN E REGISTRO
@@ -429,12 +425,19 @@ with gr.Blocks(title="Gestão de Restaurante") as demo:
                 btn_calc_conta.click(fn=calcular_conta_mesa, inputs=[in_mesa_conta, sessao_usuario], outputs=[out_total, out_tabela_conta]).then(fn=listar_pedidos, inputs=[sessao_usuario], outputs=[tabela_pedidos])
                 btn_pagar.click(fn=finalizar_conta_mesa, inputs=[in_mesa_conta, sessao_usuario], outputs=[out_msg_pagar]).then(fn=listar_pedidos, inputs=[sessao_usuario], outputs=[tabela_pedidos])
 
-            # ABA 3: Lista de Pratos
+           # ABA 3: Lista de Pratos
             with gr.TabItem("Ver Cardápio Ativo"):
                 btn_refresh_coz = gr.Button("Atualizar Catálogo")
-                output_table_cozinha = gr.Dataframe(label="Cardápio Atual", datatype=["number", "str", "number", "html"], wrap=True, interactive=False)
+                
+                # A CORREÇÃO ESTÁ AQUI: Adicionamos o "number" extra na lista do datatype!
+                output_table_cozinha = gr.Dataframe(
+                    label="Cardápio Atual", 
+                    datatype=["number", "str", "number", "number", "html"], 
+                    wrap=True, 
+                    interactive=False
+                )
+                
                 btn_refresh_coz.click(fn=gr_listar, inputs=[sessao_usuario], outputs=output_table_cozinha)
-
     # ==========================================
     # PAINEL DE ADMINISTRAÇÃO
     # ==========================================
