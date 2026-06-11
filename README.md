@@ -70,7 +70,7 @@ Passo 3: Fluxo de Configuração Inicial (Primeiro Acesso)
 
     Registrar o Restaurante: Na tela de login do Painel Admin (http://localhost:7861), vá na aba "Registrar Novo Restaurante". Crie um usuário e configure duas senhas diferentes: uma para o Administrador e outra para a Cozinha. Clique em Registrar e anote o ID de 8 dígitos do Restaurante gerado na tela.
 
-    Acesso do Administrador: Faça o login usando a senha administrativa.
+    Acesso do Administrador: Faça o login usando a senha administrativa. (caso queira testar com um restaurante teste, use o usuario res1 e senha 1234)
 
         Vá na aba "Gestão de Ingredientes" e cadastre insumos (Ex: ID 1: Pão, ID 2: Carne, ID 3: Queijo).
 
@@ -90,7 +90,7 @@ Passo 4: Operação do Dia a Dia (Cozinha e Caixa)
 
     No Painel Admin, clique em Sair (o que limpará a memória do navegador com um reload automático).
 
-    Faça o login utilizando o mesmo usuário, mas digite a Senha da Cozinha.
+    Faça o login utilizando o mesmo usuário, mas digite a Senha da Cozinha (para o mesmo usuário res1, digite a senha 12345 para entrar na aba da cozinha caso queira ja testar o exemplo pronto).
 
     O sistema revelará o painel limpo, contendo apenas a Fila de Pedidos, o Gerenciador de Caixa e a Visualização de Cardápio Ativo.
 
