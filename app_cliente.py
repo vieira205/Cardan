@@ -6,9 +6,7 @@ from datetime import datetime
 DIRETORIO = os.path.dirname(os.path.abspath(__file__))
 BANCO = os.path.join(DIRETORIO, "pratos.db")
 
-# -----------------------------
 # ENVIAR PEDIDO
-# -----------------------------
 def registrar_pedido(descricao_pedido, request: gr.Request):
     query_params = dict(request.query_params)
     id_restaurante = query_params.get('rest', '')
@@ -34,9 +32,8 @@ def registrar_pedido(descricao_pedido, request: gr.Request):
     gr.Info("Pedido enviado! A cozinha já está preparando.")
     return "" 
 
-# -----------------------------
 # LISTAR PRATOS (Com Promoções)
-# -----------------------------
+
 def listar_pratos(request: gr.Request):
     query_params = dict(request.query_params)
     id_restaurante = query_params.get('rest', '')
@@ -102,9 +99,9 @@ def listar_pratos(request: gr.Request):
     html += '</div>'
     return html
 
-# -----------------------------
-# CSS E JAVASCRIPT (Atualizado com proteção contra Dark Mode)
-# -----------------------------
+
+# CSS E JAVASCRIPT
+
 cabecalho = """
 <style>
     /* CORREÇÃO DO DARK MODE: Força o fundo claro e o texto escuro globalmente */
