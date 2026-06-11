@@ -66,6 +66,8 @@ Passo 2: Executar o Painel Administrativo/Cozinha
 
     Acesse o painel pelo link exibido no terminal (geralmente rodando na porta http://localhost:7861).
 
+    é recomendado usar o run.bat caso no windows, para rodar os dois módulos automaticamente.
+
 Passo 3: Fluxo de Configuração Inicial (Primeiro Acesso)
 
     Registrar o Restaurante: Na tela de login do Painel Admin (http://localhost:7861), vá na aba "Registrar Novo Restaurante". Crie um usuário e configure duas senhas diferentes: uma para o Administrador e outra para a Cozinha. Clique em Registrar e anote o ID de 8 dígitos do Restaurante gerado na tela.
