@@ -9,9 +9,9 @@ import qrcode
 DIRETORIO = os.path.dirname(os.path.abspath(__file__))
 BANCO = os.path.join(DIRETORIO, "pratos.db")
 
-# -----------------------------
+
 # 1. FUNÇÕES DE BANCO E SEGURANÇA
-# -----------------------------
+
 def inicializar_banco():
     conn = sqlite3.connect(BANCO)
     cursor = conn.cursor()
@@ -120,9 +120,9 @@ def validar_login(usuario, senha_digitada):
 def fazer_logout():
     return None, None, gr.update(visible=True), gr.update(visible=False), gr.update(visible=False)
 
-# -----------------------------
+
 # 2. FUNÇÕES DE PEDIDOS E CAIXA
-# -----------------------------
+
 def listar_pedidos(id_rest):
     if not id_rest: return pd.DataFrame()
     conn = sqlite3.connect(BANCO)
@@ -158,7 +158,7 @@ def calcular_conta_mesa(mesa, id_rest):
     
     conn = sqlite3.connect(BANCO)
     
-    # 1. Pega os preços normais E promocionais
+    # 1. Pega os preços
     df_pratos = pd.read_sql_query("SELECT nome, preco, preco_promocional FROM pratos WHERE id_restaurante = ?", conn, params=(id_rest,))
     
     tabela_precos = {}
@@ -231,9 +231,9 @@ def ao_clicar_na_tabela(evt: gr.SelectData, df_pedidos):
     status_atual = df_pedidos.iloc[linha]['status']
     return id_selecionado, status_atual
 
-# -----------------------------
+
 # 3. LÓGICA DE INGREDIENTES E QR CODE
-# -----------------------------
+
 def gr_listar_ingredientes(id_rest):
     if not id_rest: return pd.DataFrame()
     conn = sqlite3.connect(BANCO)
@@ -273,9 +273,9 @@ def gerar_qr_code(numero_mesa, link_base, id_rest):
     qr.make(fit=True)
     return qr.make_image(fill_color="black", back_color="white").get_image()
 
-# -----------------------------
+
 # 4. CRUD DE PRATOS 
-# -----------------------------
+
 def gr_listar(id_rest):
     if not id_rest: return pd.DataFrame()
     conn = sqlite3.connect(BANCO)
@@ -353,18 +353,17 @@ def gr_editar(id_busca, nome, preco, preco_promo, foto, id_rest):
     if linhas_afetadas > 0: return f"Prato ID {id_busca} atualizado!", gr_listar(id_rest)
     return "Erro: Prato não encontrado", gr_listar(id_rest)
 
-# -----------------------------
+
 # 5. INTERFACE GRADIO
-# -----------------------------
+
 inicializar_banco()
 
 with gr.Blocks(title="Gestão de Restaurante") as demo:
     sessao_usuario = gr.State(None)
     sessao_perfil = gr.State(None)
 
-    # ==========================================
+
     # TELA DE LOGIN E REGISTRO
-    # ==========================================
     with gr.Column(visible=True) as tela_login:
         gr.Markdown("# Acesso ao Sistema CARD🍔N")
         
@@ -382,9 +381,8 @@ with gr.Blocks(title="Gestão de Restaurante") as demo:
             msg_reg = gr.Markdown("")
             btn_registrar.click(registrar_usuario, inputs=[reg_user, reg_senha_admin, reg_senha_cozinha], outputs=[msg_reg])
 
-    # ==========================================
+
     # PAINEL DA COZINHA (Apenas Pedidos, Caixa e Visualização)
-    # ==========================================
     with gr.Column(visible=False) as tela_cozinha:
         with gr.Row():
             titulo_cozinha = gr.Markdown("# CARD🍔N - Painel da Cozinha e Caixa")
@@ -429,7 +427,7 @@ with gr.Blocks(title="Gestão de Restaurante") as demo:
             with gr.TabItem("Ver Cardápio Ativo"):
                 btn_refresh_coz = gr.Button("Atualizar Catálogo")
                 
-                # A CORREÇÃO ESTÁ AQUI: Adicionamos o "number" extra na lista do datatype!
+
                 output_table_cozinha = gr.Dataframe(
                     label="Cardápio Atual", 
                     datatype=["number", "str", "number", "number", "html"], 
@@ -438,16 +436,16 @@ with gr.Blocks(title="Gestão de Restaurante") as demo:
                 )
                 
                 btn_refresh_coz.click(fn=gr_listar, inputs=[sessao_usuario], outputs=output_table_cozinha)
-    # ==========================================
+
     # PAINEL DE ADMINISTRAÇÃO
-    # ==========================================
+
     with gr.Column(visible=False) as tela_admin:
         with gr.Row():
             titulo_admin = gr.Markdown("# CARD🍔N - Administração")
             btn_logout_admin = gr.Button("Sair", size="sm")
 
         with gr.Tabs():
-            # ABA 1: Lista de Pratos (Gestão)
+            # ABA 1: Lista de Pratos
             with gr.TabItem("Catálogo de Pratos Ativos"):
                 btn_refresh_adm = gr.Button("Atualizar Catálogo")
                 output_table_admin = gr.Dataframe(label="Cardápio Ativo", datatype=["number", "str", "number", "number", "html"], wrap=True)
@@ -520,9 +518,9 @@ with gr.Blocks(title="Gestão de Restaurante") as demo:
                 
                 btn_qr.click(fn=gerar_qr_code, inputs=[in_mesa, in_link_base, sessao_usuario], outputs=[out_qr])
 
-    # ==========================================
+
     # EVENTOS DE TRANSIÇÃO E LOGOUT
-    # ==========================================
+
     btn_login.click(
         fn=validar_login, 
         inputs=[login_user, login_senha], 
@@ -537,7 +535,7 @@ with gr.Blocks(title="Gestão de Restaurante") as demo:
         fn=gr_listar_ingredientes, inputs=[sessao_usuario], outputs=[tabela_ingredientes]
     )
     
-    # ---> SUBSTITUA APENAS ESTAS DUAS LINHAS ABAIXO <---
+
     btn_logout_admin.click(fn=None, js="() => { window.location.reload(); }")
     btn_logout_coz.click(fn=None, js="() => { window.location.reload(); }")
 
