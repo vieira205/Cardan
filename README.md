@@ -98,4 +98,4 @@ Passo 4: Operação do Dia a Dia (Cozinha e Caixa)
 
     Quando o cliente fizer um pedido pelo celular, ele aparecerá na tela da cozinha instantaneamente. Basta clicar na linha do pedido, selecionar o novo status (Preparando ou Pronto para Retirada) e confirmar.
 
-    No final do consumo, digite o número da mesa na aba "Caixa / Fechar Conta", clique em calcular para obter o extrato detalhado com valores somados automaticamente (incluindo pratos promocionais) e clique em fechar conta para liberar a mesa para o próximo cliente.
+    No final do consumo, digite o número da mesa na aba "Caixa / Fechar Conta", clique em calcular para obter o extrato detalhado com valores somados automaticamente (incluindo pratos promocionais) e clique em fechar conta para liberar a mesa para o próximo cliente.                                                                                                                                                                                                                                                                                                                                                           cardan será refeito 07/26
