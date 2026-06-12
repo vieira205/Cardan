@@ -1,3 +1,9 @@
+Integrantes:
+Pedro Vieira Bezerra de Araujo
+Ian Theodoro Campanhã
+Artur Daniel Silva de Melo
+Ezequiel Ferreira
+
 # CARDAN - Gestão de Restaurante
 
 O **CARDAN** é um sistema web interativo para a gestão de pratos de um restaurante. Ele fornece uma interface amigável e moderna para realizar todas as operações essenciais de gerenciamento de dados (CRUD — Criar, Ler, Atualizar e Deletar), garantindo a persistência dos dados de forma eficiente.
